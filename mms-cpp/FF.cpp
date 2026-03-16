@@ -2,7 +2,7 @@
 #include <deque>
 #include <string>
 #include "API.h"
-
+#include "BFS.h"
 namespace commands{
     inline void mf(int distance = 1) { API::moveForward(distance);}
     inline void mfh(int distance = 1) { API::moveForwardHalf(distance);}
@@ -152,12 +152,11 @@ void fillmat(int* ptr, int* walls)
         }
     }
 
-    // Optional: clear previous fill values if needed
-     for (int x = 0; x < rows; x++) {
+    for (int x = 0; x < rows; x++) {
          for (int y = 0; y < cols; y++) {
              *(ptr + x + cols * y) = 0;
          }
-     }
+    }
 
     while (!stack.empty()) {
         stack.pop_back();
@@ -230,15 +229,100 @@ void fillmat(int* ptr, int* walls)
     }
 }
 
+
+
+void fillmatStart(int* ptr, int* walls)
+{
+    int temp[16][16];
+
+    for (int x = 0; x < rows; x++) {
+        for (int y = 0; y < cols; y++) {
+            temp[x][y] = *(walls + x + cols * y);
+        }
+    }
+
+    for (int x = 0; x < rows; x++) {
+         for (int y = 0; y < cols; y++) {
+             *(ptr + x + cols * y) = 0;
+         }
+    }
+
+    while (!stack.empty()) {
+        stack.pop_back();
+    }
+
+    *(ptr + cols * 15)     = 1;
+
+    stack.push_front({0, 15});
+
+    Location cur;
+    while (!stack.empty())
+    {
+        cur = stack.back();
+        stack.pop_back();
+
+        // move east: (x+1, y)
+        if (
+            cur.x + 1 < rows &&
+            *(ptr + (cur.x + 1) + cols * cur.y) == 0 &&
+            ((temp[cur.x + 1][cur.y] & (1<<1)) == 0) &&
+            ((temp[cur.x][cur.y]     & (1<<3)) == 0)
+        )
+        {
+            *(ptr + (cur.x + 1) + cols * cur.y) = *(ptr + cur.x + cols * cur.y) + 1;
+            stack.push_front({cur.x + 1, cur.y});
+        }
+
+        // move west: (x-1, y)
+        if (
+            cur.x - 1 >= 0 &&
+            *(ptr + (cur.x - 1) + cols * cur.y) == 0 &&
+            ((temp[cur.x - 1][cur.y] & (1<<3)) == 0) &&
+            ((temp[cur.x][cur.y]     & (1<<1)) == 0)
+        )
+        {
+            *(ptr + (cur.x - 1) + cols * cur.y) = *(ptr + cur.x + cols * cur.y) + 1;
+            stack.push_front({cur.x - 1, cur.y});
+        }
+
+        // move north: (x, y+1)
+        if (
+            cur.y + 1 < cols &&
+            *(ptr + cur.x + cols * (cur.y + 1)) == 0 &&
+            ((temp[cur.x][cur.y + 1] & N) == 0) &&
+            ((temp[cur.x][cur.y]     & S) == 0)
+        )
+        {
+            *(ptr + cur.x + cols * (cur.y + 1)) = *(ptr + cur.x + cols * cur.y) + 1;
+            stack.push_front({cur.x, cur.y + 1});
+        }
+
+        // move south: (x, y-1)
+        if (
+            cur.y - 1 >= 0 &&
+            *(ptr + cur.x + cols * (cur.y - 1)) == 0 &&
+            ((temp[cur.x][cur.y - 1] & S) == 0) &&
+            ((temp[cur.x][cur.y]     & N) == 0)
+        )
+        {
+            *(ptr + cur.x + cols * (cur.y - 1)) = *(ptr + cur.x + cols * cur.y) + 1;
+            stack.push_front({cur.x, cur.y - 1});
+        }
+    }
+}
+
+
 void next(int* mat, int* walls, int x, int y, int angle, int* xp, int* yp, int* anglep)
 {
+    //this procedure checks where's the next optimal route (aka having the smallest value in the matrix)
+    //then it goes that way
+
+    //ex pseudo code for checking if north has the smallest value
         // if no wall in north
-            // if (north < east) && (no wall in east) &&
-            // (north < west) && (no wall in west) &&
-            // (north < south) && (no wall in south) &&
-                // go north
-        // check north
-        //y = 15 - y;
+            // if (no wall in east) {if(north > east) {goto east}}
+            // if (no wall in west) {if(north > east) {goto east}}
+            // if (no wall in east) {if(north > east) {goto east}}
+            // move north
         if( (*(walls + x + 16 * y)&(1<<2)) == 0)
         {
             
@@ -342,9 +426,94 @@ int checkEnd(int x, int y)
     }
 }
 
+int checkStart(int x, int y)
+{
+    if(x == 0 && y == 15){
+        return 0;
+    }
+    else {
+        return 1;
+    }
+}
+
+
+void setWalls(int* walls, int* visited)
+{
+    //set all unvisited walls to 1
+    //for the final run
+    int m;
+    for(int i=0; i<rows; i++){
+        for(int j=0; j<cols; j++){
+            m = 15-j;
+            if( *(visited + i + 16*m) == 0)
+            {
+                //outer walls
+                if(i == 15)
+                {
+                    *(walls + i + 16*m) |= (1<<3);
+                    sw(i, j, 'e');
+                }
+                if(i == 0)
+                {
+                    *(walls + i + 16*m) |= (1<<1);
+                    sw(i, j, 'w');
+                }
+                if(m == 15)
+                {
+                    *(walls + i + 16*m) |= (1<<0);
+                    sw(i, j, 's');
+                }
+                if(m == 0)
+                {
+                    *(walls + i + 16*m) |= (1<<2);
+                    sw(i, j, 'n');
+                }
+
+                //east
+                if(i+1 < 16){
+                if( (*(visited + i + 1 + 16*m) == 0))
+                {
+                    *(walls + i + 16*m) |= (1<<3);
+                    *(walls + i + 1 + 16*m) |= (1<<1);
+                    sw(i, j, 'e');
+                }}
+
+                //west
+                if(i-1 >= 0){
+                if( *(visited + i - 1 + 16*m) == 0)
+                {
+                    *(walls + i + 16*m) |= (1<<1);
+                    *(walls + i - 1 + 16*m) |= (1<<3);
+                    sw(i, j, 'w');
+                }}
+
+                //south
+                if(m+1 < 16){
+                if( *(visited + i + 16*(m+1)) == 0)
+                {
+                    *(walls + i + 16*m) |= (1<<0);
+                    *(walls + i + 16*(m+1)) |= (1<<2);
+                    sw(i, j, 's');
+                }}
+
+                //north
+                if(m-1 >= 0){
+                if( *(visited + i + 16*(m-1)) == 0)
+                {
+                    *(walls + i + 16*m) |= (1<<2);
+                    *(walls + i + 16*(m-1)) |= (1<<0);
+                    sw(i, j, 'n');
+                }}
+
+            }
+        }
+    }
+}
+
 int FloodFill(){
     int matrix[rows][cols]; 
     int walls[rows][cols];
+    int visited[rows][cols];
     int x = 0, y = 15;
     int angle = 90;
     log("Running...\n");
@@ -361,15 +530,46 @@ int FloodFill(){
             walls[i][j] = 0;
         }
     }
+    for(int i=0; i<rows; i++){
+        for(int j=0; j<cols; j++){
+            visited[i][j] = 0;
+        }
+    }
 
-
+    //solve maze run
     while(checkEnd(x, y)){
         log("x:" + to_string(x) + " y:" + to_string(y) + "\n");
+        visited[y][x] = 1;
+        sc(x, 15-y, 'g');
         checkWalls(x ,y, angle, &walls[0][0]);
         fillmat(&matrix[0][0], &walls[0][0]);
         printmat(&matrix[0][0]);
         next(&matrix[0][0], &walls[0][0], x, y, angle, &x, &y, &angle);
     }
+    sc(x, 15-y, 'g');
+    st(x, 15-y, ":D");
 
+    //go back run
+    while(checkStart(x, y)){
+        log("x:" + to_string(x) + " y:" + to_string(y) + "\n");
+        visited[y][x] = 1;
+        sc(x, 15-y, 'g');
+        checkWalls(x ,y, angle, &walls[0][0]);
+        fillmatStart(&matrix[0][0], &walls[0][0]);
+        printmat(&matrix[0][0]);
+        next(&matrix[0][0], &walls[0][0], x, y, angle, &x, &y, &angle);
+    }
+
+    setWalls(&walls[0][0], &visited[0][0]);
+    fillmat(&matrix[0][0], &walls[0][0]);
+    printmat(&matrix[0][0]);
+
+    //speedrun :)
+    while(checkEnd(x, y)){
+        log("x:" + to_string(x) + " y:" + to_string(y) + "\n");
+        sc(x, 15-y, 'b');
+        next(&matrix[0][0], &walls[0][0], x, y, angle, &x, &y, &angle);
+    }
     log("CONGRATS!! :D");
+
 }
