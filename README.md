@@ -1,2 +1,6 @@
+Implementing Flood-Fill with Backtracking and Diagonal Movement
+
 - Here's the download link for the simulator "https://github.com/mackorone/mms?tab=readme-ov-file#download"
-- I'm gonna write code for some of the common maze solving algorithms such as ( to be filled later )
+
+## Demo
+![Micromouse Demo](demo.gif)
