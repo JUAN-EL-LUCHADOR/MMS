@@ -36,7 +36,6 @@ int rows = 16;
 int cols = 16;
 
 
-
 void log(const std::string& text) {
     std::cerr << text;
 }
@@ -49,32 +48,43 @@ int turnTo(int* currentAngle, int targetAngle)
     if(*currentAngle == targetAngle) { return 0;}
     if( (targetAngle % 45) != 0 ){ log("Can't turn that angle: " + to_string(targetAngle)); return 404;}
     
-    if(*currentAngle == 270 && targetAngle == 0)
+    if(*currentAngle >= 270 && targetAngle < 90)
     {
-        tl();
-        *currentAngle = 0;
+        while(*currentAngle != targetAngle)
+        {
+            tlh();
+            *currentAngle += 45;
+            if(*currentAngle >= 360) {*currentAngle -= 360;}
+
+        }
     }
+
+    if(*currentAngle < 90 && targetAngle >= 270)
+    {
+        while(*currentAngle != targetAngle)
+        {
+            trh();
+            *currentAngle -= 45;
+            if(*currentAngle < 0) {*currentAngle += 360;}
+
+        }
+    }
+
     else if(*currentAngle > targetAngle)
     {
         while(*currentAngle != targetAngle)
         {
-            tr();
-            *currentAngle -= 90;
+            trh();
+            *currentAngle -= 45;
         }
-    }
-
-    else if(*currentAngle == 0 && targetAngle == 270)
-    {
-        tr();
-        *currentAngle = 270;
     }
 
     else if(*currentAngle < targetAngle)
     {
        while(*currentAngle != targetAngle)
         {
-            tl();
-            *currentAngle += 90;
+            tlh();
+            *currentAngle += 45;
         } 
     }
     return 0;
@@ -451,22 +461,22 @@ void setWalls(int* walls, int* visited)
                 if(i == 15)
                 {
                     *(walls + i + 16*m) |= (1<<3);
-                    sw(i, j, 'e');
+                    //sw(i, j, 'e');
                 }
                 if(i == 0)
                 {
                     *(walls + i + 16*m) |= (1<<1);
-                    sw(i, j, 'w');
+                    //sw(i, j, 'w');
                 }
                 if(m == 15)
                 {
                     *(walls + i + 16*m) |= (1<<0);
-                    sw(i, j, 's');
+                    //sw(i, j, 's');
                 }
                 if(m == 0)
                 {
                     *(walls + i + 16*m) |= (1<<2);
-                    sw(i, j, 'n');
+                    //sw(i, j, 'n');
                 }
 
                 //east
@@ -475,7 +485,7 @@ void setWalls(int* walls, int* visited)
                 {
                     *(walls + i + 16*m) |= (1<<3);
                     *(walls + i + 1 + 16*m) |= (1<<1);
-                    sw(i, j, 'e');
+                    //sw(i, j, 'e');
                 }}
 
                 //west
@@ -484,7 +494,7 @@ void setWalls(int* walls, int* visited)
                 {
                     *(walls + i + 16*m) |= (1<<1);
                     *(walls + i - 1 + 16*m) |= (1<<3);
-                    sw(i, j, 'w');
+                    //sw(i, j, 'w');
                 }}
 
                 //south
@@ -493,7 +503,7 @@ void setWalls(int* walls, int* visited)
                 {
                     *(walls + i + 16*m) |= (1<<0);
                     *(walls + i + 16*(m+1)) |= (1<<2);
-                    sw(i, j, 's');
+                    //sw(i, j, 's');
                 }}
 
                 //north
@@ -502,12 +512,193 @@ void setWalls(int* walls, int* visited)
                 {
                     *(walls + i + 16*m) |= (1<<2);
                     *(walls + i + 16*(m-1)) |= (1<<0);
-                    sw(i, j, 'n');
+                    //sw(i, j, 'n');
                 }}
 
             }
         }
     }
+}
+
+string mapping(int x, int y, int angle, int* mat, int* walls)
+{   // convert the optimal path to S, R, L
+    // S => half step   R => turn right   L => turn left
+    int distance = 0;
+    int PrevAngle = angle;
+    log(to_string(x) + " " + to_string(y));
+    string map;
+
+    while(checkEnd(x, y)){
+    // check north
+        if( (*(walls + x + 16 * y)&(1<<2)) == 0)
+        {
+            
+                if((*(walls + x + 16 * y)&(1<<3)) == 0) {
+                    if(*(mat + x + 16 * (y - 1)) > *(mat + x + 1 + 16 * y)) {goto east;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<1)) == 0){
+                    if( *(mat + x + 16 * (y - 1)) > *(mat + x - 1 + 16 * y)) {goto east;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<0)) == 0){
+                    if(*(mat + x + 16 * (y - 1)) > *(mat + x + 16 * (y + 1))){goto east;}
+                }    
+                angle = 90;   
+                if(PrevAngle == angle) {map += "SS"; y -= 1;}
+                else if(PrevAngle > angle) {map += 'R';} 
+                else if(PrevAngle < angle) {map += 'L';}
+                goto end;
+        }
+
+        // check east
+        east:
+        if( (*(walls + x + 16 * y)&(1<<3)) == 0)
+        {
+            
+                if((*(walls + x + 16 * y)&(1<<2)) == 0) {
+                    if(*(mat + x + 1 + 16 * y) > *(mat + x + 16 * (y - 1))) {goto south;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<1)) == 0){
+                    if( *(mat + x + 1 + 16 * y) > *(mat + x - 1 + 16 * y)) {goto south;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<0)) == 0){
+                    if(*(mat + x + 1 + 16 * y) > *(mat + x + 16 * (y + 1))){goto south;}
+                } 
+                angle = 0;   
+                if(PrevAngle == angle) {map += "SS"; x += 1;}
+                else if(PrevAngle > angle && PrevAngle <= 180) {map += 'R';}
+                else if(PrevAngle < angle || PrevAngle > 180) {map += 'L';}
+                goto end;
+        }
+
+        // check south
+        south:
+        if( (*(walls + x + 16 * y)&(1<<0)) == 0)
+        {
+            
+                if((*(walls + x + 16 * y)&(1<<3)) == 0) {
+                    if(*(mat + x + 16 * (y + 1)) > *(mat + x + 1 + 16 * y)) {goto west;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<1)) == 0){
+                    if( *(mat + x + 16 * (y + 1)) > *(mat + x - 1 + 16 * y)) {goto west;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<2)) == 0){
+                    if(*(mat + x + 16 * (y + 1)) > *(mat + x + 16 * (y - 1))){goto west;}
+                }    
+                angle = 270;   
+                if(PrevAngle == angle) {map += "SS"; y += 1;}
+                else if(PrevAngle > angle || PrevAngle == 0) {map += 'R';}
+                else if(PrevAngle < angle) {map += 'L';}
+                goto end;
+        }
+
+        // check west
+        west:
+        if( (*(walls + x + 16 * y)&(1<<1)) == 0)
+        {
+            
+                if((*(walls + x + 16 * y)&(1<<3)) == 0) {
+                    if(*(mat + x - 1 + 16 * y) > *(mat + x + 1 + 16 * y)) {goto end;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<2)) == 0){
+                    if( *(mat + x - 1 + 16 * y) > *(mat + x + 16 * (y - 1))) {goto end;}
+                }
+                
+                if((*(walls + x + 16 * y)&(1<<0)) == 0){
+                    if(*(mat + x - 1 + 16 * y) > *(mat + x + 16 * (y + 1))){goto end;}
+                }    
+                angle = 180;   
+                if(PrevAngle == angle) {map += "SS"; x -= 1;}
+                else if(PrevAngle > angle) {map += 'R';}
+                else if(PrevAngle < angle) {map += 'L';}
+                goto end;
+        }
+    
+    end:
+    PrevAngle = angle;
+    }
+    return map;
+}
+
+void diagonalMovement(string map, int* x, int* y, int* angle)
+{
+    string seg;
+    string nextSeg;
+
+    while(!map.empty()){
+    seg = map.substr(0, 3);
+    if(seg == "SRS" || seg == "SLS")
+    {
+        int i = 1;
+        string direction;
+        char lastdir = 'e';
+        
+        //check for srs sls ...
+        nextSeg = map.substr(i * 3, 3);
+        if(nextSeg == "SRS" || nextSeg == "SLS"){
+        while(nextSeg == "SRS" || nextSeg == "SLS")
+        {
+            i++;
+            nextSeg = map.substr(i * 3, 3);
+        }
+         for(int j = 0; j<i; j++)
+         {
+            if(seg[1] == 'L')
+            {
+                if(lastdir == 'e'){turnTo(angle, *angle + 45);}
+                else if(lastdir == 'L'){turnTo(angle, *angle + 90);}
+                
+                mfh();
+                lastdir = 'L';
+            }
+            else 
+            {
+                if(lastdir == 'e'){turnTo(angle, *angle - 45);}
+                else if(lastdir == 'R'){turnTo(angle, *angle - 90);}
+                
+                mfh();
+                lastdir = 'R';
+            }
+            map.erase(0, 3);
+            seg = map.substr(0, 3);
+         }
+         lastdir == 'R' ? turnTo(angle, *angle - 45) : turnTo(angle, *angle + 45);
+         lastdir = 'e';
+        }
+        else
+        {
+            seg[1] == 'R' ? turnTo(angle, *angle - 45) : turnTo(angle, *angle + 45);
+            mfh();
+            seg[1] == 'R' ? turnTo(angle, *angle - 45) : turnTo(angle, *angle + 45);
+            map.erase(0, 3);
+        }
+    }
+
+    else if(seg == "SSS")
+    {   
+        int i = 0;
+        while(map[i + 1] == 'S')
+        {
+            i += 1;
+        }
+        mfh(i);
+        map.erase(0, i);
+    }
+
+    else if(seg == "SSR" || seg == "SSL"){
+        mfh();
+        map.erase(0, 1);
+    }
+
+    else {break;}
+}
+    mfh();
 }
 
 int FloodFill(){
@@ -516,6 +707,7 @@ int FloodFill(){
     int visited[rows][cols];
     int x = 0, y = 15;
     int angle = 90;
+    string map;
     log("Running...\n");
     sc(0, 0, 'G');
     st(0, 0, "Start");
@@ -540,7 +732,7 @@ int FloodFill(){
     while(checkEnd(x, y)){
         log("x:" + to_string(x) + " y:" + to_string(y) + "\n");
         visited[y][x] = 1;
-        sc(x, 15-y, 'g');
+       //sc(x, 15-y, 'g');
         checkWalls(x ,y, angle, &walls[0][0]);
         fillmat(&matrix[0][0], &walls[0][0]);
         printmat(&matrix[0][0]);
@@ -553,23 +745,19 @@ int FloodFill(){
     while(checkStart(x, y)){
         log("x:" + to_string(x) + " y:" + to_string(y) + "\n");
         visited[y][x] = 1;
-        sc(x, 15-y, 'g');
+        //sc(x, 15-y, 'g');
         checkWalls(x ,y, angle, &walls[0][0]);
         fillmatStart(&matrix[0][0], &walls[0][0]);
         printmat(&matrix[0][0]);
         next(&matrix[0][0], &walls[0][0], x, y, angle, &x, &y, &angle);
     }
-
     setWalls(&walls[0][0], &visited[0][0]);
     fillmat(&matrix[0][0], &walls[0][0]);
     printmat(&matrix[0][0]);
 
-    //speedrun :)
-    while(checkEnd(x, y)){
-        log("x:" + to_string(x) + " y:" + to_string(y) + "\n");
-        sc(x, 15-y, 'b');
-        next(&matrix[0][0], &walls[0][0], x, y, angle, &x, &y, &angle);
-    }
-    log("CONGRATS!! :D");
+    turnTo(&angle, 90);
+    map = mapping(x, y, angle, &matrix[0][0], &walls[0][0]);
 
+    diagonalMovement(map, &x, &y, &angle);
+    return 0;
 }

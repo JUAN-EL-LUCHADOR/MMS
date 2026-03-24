@@ -88,7 +88,7 @@ void API::turnRight() {
 }
 
 void API::turnRight45() {
-    std::cout << "turnRight" << std::endl;
+    std::cout << "turnRight45" << std::endl;
     std::string ack;
     std::cin >> ack;
 }
@@ -100,7 +100,7 @@ void API::turnLeft() {
 }
 
 void API::turnLeft45() {
-    std::cout << "turnLeft" << std::endl;
+    std::cout << "turnLeft45" << std::endl;
     std::string ack;
     std::cin >> ack;
 }
